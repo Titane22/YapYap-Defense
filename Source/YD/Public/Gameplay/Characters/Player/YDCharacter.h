@@ -24,14 +24,14 @@ class AYDCharacter : public ACharacter
 
 public:
 	AYDCharacter();
-protected:
 
+protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Stats", meta = (AllowPrivateAccess = "true"))
 	UCharacterStatComponent* CharacterStatComponent;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Combat", meta = (AllowPrivateAccess = "true"))
 	UCombatComponent* CombatComponent;
-	
+
 protected:
 	// APawn interface
 	virtual void BeginPlay();

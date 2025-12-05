@@ -5,8 +5,10 @@
 #include "Gameplay/Components/CombatComponent.h"
 #include "Engine/LocalPlayer.h"
 #include "Components/CapsuleComponent.h"
+#include "Components/SkeletalMeshComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/Controller.h"
+#include "Animation/AnimInstance.h"
 
 DEFINE_LOG_CATEGORY(LogTemplateCharacter);
 
@@ -37,11 +39,12 @@ AYDCharacter::AYDCharacter()
 	CombatComponent = CreateDefaultSubobject<UCombatComponent>(TEXT("CombatComponent"));
 
 	// Note: The skeletal mesh and anim blueprint references on the Mesh component (inherited from Character)
-	// are set in the derived blueprint asset named ThirdPersonCharacter (to avoid direct content references in C++)
+	// can now be set via CharacterData asset for a fully data-driven approach
 }
 
 void AYDCharacter::BeginPlay()
 {
 	// Call the base class
 	Super::BeginPlay();
+
 }

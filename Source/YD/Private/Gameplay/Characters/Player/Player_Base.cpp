@@ -3,8 +3,12 @@
 
 #include "Gameplay/Characters/Player/Player_Base.h"
 #include "Gameplay/Components/InventoryComponent.h"
+#include "Gameplay/Components/CharacterStatComponent.h"
+#include "Gameplay/Components/AbilityComponent.h"
+#include "Gameplay/Data/Character_Data.h"
 #include "Camera/CameraComponent.h"
 #include "GameFramework/SpringArmComponent.h"
+#include "GameFramework/CharacterMovementComponent.h"
 
 APlayer_Base::APlayer_Base()
 {
@@ -26,4 +30,122 @@ APlayer_Base::APlayer_Base()
 
 	// Create inventory component
 	InventoryComponent = CreateDefaultSubobject<UInventoryComponent>(TEXT("InventoryComponent"));
+	
+	// Create ability component
+	AbilityComponent = CreateDefaultSubobject<UAbilityComponent>(TEXT("AbilityComponent"));
+
+}
+
+void APlayer_Base::InitializeFromCharacterData(UCharacter_Data* CharacterData)
+{
+	if (!CharacterData)
+	{
+		UE_LOG(LogTemplateCharacter, Warning, TEXT("InitializeFromCharacterData: CharacterData is null"));
+		return;
+	}
+
+	CurrentCharacterData = CharacterData;
+
+	// Apply visual settings
+	ApplyVisualSettings(CharacterData);
+
+	// Apply stats
+	ApplyStats(CharacterData);
+
+	// Initialize abilities
+	if (AbilityComponent)
+	{
+		AbilityComponent->InitializeAbilities(CharacterData);
+	}
+
+	UE_LOG(LogTemplateCharacter, Log, TEXT("Character initialized from data: %s"), *CharacterData->CharacterName.ToString());
+}
+
+void APlayer_Base::BeginPlay()
+{
+	Super::BeginPlay();
+	
+	// Initialize from character data if set
+	if (CurrentCharacterData)
+	{
+		InitializeFromCharacterData(CurrentCharacterData);
+	}
+}
+
+void APlayer_Base::ApplyVisualSettings(UCharacter_Data* CharacterData)
+{
+	if (!CharacterData)
+	{
+		return;
+	}
+
+	USkeletalMeshComponent* MeshComp = GetMesh();
+	if (!MeshComp)
+	{
+		UE_LOG(LogTemplateCharacter, Warning, TEXT("ApplyVisualSettings: Mesh component is null"));
+		return;
+	}
+
+	// Set skeletal mesh
+	if (CharacterData->SkeletalMesh)
+	{
+		MeshComp->SetSkeletalMesh(CharacterData->SkeletalMesh);
+		UE_LOG(LogTemplateCharacter, Log, TEXT("Applied skeletal mesh: %s"), *CharacterData->SkeletalMesh->GetName());
+	}
+
+	// Set animation blueprint
+	if (CharacterData->AnimationBlueprint)
+	{
+		MeshComp->SetAnimInstanceClass(CharacterData->AnimationBlueprint);
+		UE_LOG(LogTemplateCharacter, Log, TEXT("Applied animation blueprint: %s"), *CharacterData->AnimationBlueprint->GetName());
+	}
+
+	// Apply materials
+	if (CharacterData->Materials.Num() > 0)
+	{
+		for (int32 i = 0; i < CharacterData->Materials.Num(); i++)
+		{
+			if (CharacterData->Materials[i])
+			{
+				MeshComp->SetMaterial(i, CharacterData->Materials[i]);
+			}
+		}
+		UE_LOG(LogTemplateCharacter, Log, TEXT("Applied %d materials"), CharacterData->Materials.Num());
+	}
+
+	// Apply transform settings
+	MeshComp->SetRelativeScale3D(CharacterData->MeshScale);
+	MeshComp->SetRelativeLocation(CharacterData->MeshLocationOffset);
+	MeshComp->SetRelativeRotation(CharacterData->MeshRotationOffset);
+}
+
+void APlayer_Base::ApplyStats(UCharacter_Data* CharacterData)
+{
+	if (!CharacterData)
+	{
+		return;
+	}
+
+	// Apply movement speed
+	if (UCharacterMovementComponent* MovementComp = GetCharacterMovement())
+	{
+		MovementComp->MaxWalkSpeed = CharacterData->BaseMovementSpeed;
+		UE_LOG(LogTemplateCharacter, Log, TEXT("Set movement speed to %.1f"), CharacterData->BaseMovementSpeed);
+	}
+
+	// Apply stats to StatComponent
+	if (CharacterStatComponent)
+	{
+		CharacterStatComponent->BaseMaxHealth = CharacterData->BaseHealth;
+		CharacterStatComponent->BaseAttackDamage = CharacterData->BaseAttackDamage;
+		CharacterStatComponent->BaseAttackSpeed = CharacterData->BaseAttackSpeed;
+		CharacterStatComponent->BaseArmor = CharacterData->BaseArmor;
+		CharacterStatComponent->BaseMoveSpeed = CharacterData->BaseMovementSpeed;
+
+		// Recalculate all stats
+		CharacterStatComponent->RecalculateStats();
+
+		UE_LOG(LogTemplateCharacter, Log, TEXT("Applied stats - Health: %.1f, Damage: %.1f, Speed: %.1f"),
+			CharacterData->BaseHealth, CharacterData->BaseAttackDamage, CharacterData->BaseAttackSpeed);
+	}
 }
