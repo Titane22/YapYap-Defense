@@ -34,6 +34,8 @@ APlayer_Base::APlayer_Base()
 	// Create ability component
 	AbilityComponent = CreateDefaultSubobject<UAbilityComponent>(TEXT("AbilityComponent"));
 
+	// Add "Player" tag for team identification
+	Tags.Add(FName("Player"));
 }
 
 void APlayer_Base::InitializeFromCharacterData(UCharacter_Data* CharacterData)
@@ -52,11 +54,8 @@ void APlayer_Base::InitializeFromCharacterData(UCharacter_Data* CharacterData)
 	// Apply stats
 	ApplyStats(CharacterData);
 
-	// Initialize abilities
-	if (AbilityComponent)
-	{
-		AbilityComponent->InitializeAbilities(CharacterData);
-	}
+	// Note: Abilities are automatically initialized in AbilityComponent::BeginPlay()
+	// AbilityDataAssets should be set in the component's defaults
 
 	UE_LOG(LogTemplateCharacter, Log, TEXT("Character initialized from data: %s"), *CharacterData->CharacterName.ToString());
 }
@@ -145,7 +144,11 @@ void APlayer_Base::ApplyStats(UCharacter_Data* CharacterData)
 		// Recalculate all stats
 		CharacterStatComponent->RecalculateStats();
 
-		UE_LOG(LogTemplateCharacter, Log, TEXT("Applied stats - Health: %.1f, Damage: %.1f, Speed: %.1f"),
-			CharacterData->BaseHealth, CharacterData->BaseAttackDamage, CharacterData->BaseAttackSpeed);
+		// Initialize to full health after applying new stats
+		CharacterStatComponent->CurrentHealth = CharacterStatComponent->CurrentMaxHealth;
+
+		UE_LOG(LogTemplateCharacter, Log, TEXT("Applied stats - Health: %.1f/%.1f, Damage: %.1f, Speed: %.1f"),
+			CharacterStatComponent->CurrentHealth, CharacterStatComponent->CurrentMaxHealth,
+			CharacterData->BaseAttackDamage, CharacterData->BaseAttackSpeed);
 	}
 }

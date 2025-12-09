@@ -3,37 +3,13 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "GameplayTagContainer.h"
+#include "TargetingStrategy.h"
 #include "Engine/DataAsset.h"
+#include "AbilityTypes.h"
 #include "AbilityData.generated.h"
 
-/**
- * Enum for ability types
- */
-UENUM(BlueprintType)
-enum class EAbilityType : uint8
-{
-	Damage		UMETA(DisplayName = "Damage"),
-	Heal		UMETA(DisplayName = "Heal"),
-	Buff		UMETA(DisplayName = "Buff"),
-	Debuff		UMETA(DisplayName = "Debuff"),
-	Utility		UMETA(DisplayName = "Utility"),
-	Summon		UMETA(DisplayName = "Summon")
-};
-
-/**
- * Enum for ability targeting mode
- * Note: AOE is not a target type - use SpawnedActorClass with AOE_Base instead
- */
-UENUM(BlueprintType)
-enum class EAbilityTargetType : uint8
-{
-	Self			UMETA(DisplayName = "Self"),
-	SingleTarget	UMETA(DisplayName = "Single Target"),
-	GroundTarget	UMETA(DisplayName = "Ground Target"),
-	Directional		UMETA(DisplayName = "Directional"),
-	None			UMETA(DisplayName = "None")
-};
-
+class UTargetingStrategy;
 /**
  * Data asset for ability configuration
  */
@@ -43,84 +19,71 @@ class YD_API UAbilityData : public UPrimaryDataAsset
 	GENERATED_BODY()
 
 public:
-	/** Ability display name */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Ability|Basic")
-	FText AbilityName;
-
-	/** Ability description */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Ability|Basic", meta = (MultiLine = true))
-	FText Description;
-
-	/** Ability icon */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Ability|Basic")
-	UTexture2D* Icon;
-
-	/** Ability type */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Ability|Basic")
-	EAbilityType AbilityType;
-
-	/** Targeting mode */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Ability|Targeting")
-	EAbilityTargetType TargetType;
-
-	/** Maximum targeting range */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Ability|Targeting", meta = (ClampMin = "0.0"))
-	float Range = 1000.0f;
-
-	/** AOE radius (if applicable) */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Ability|Targeting", meta = (ClampMin = "0.0"))
-	float AOERadius = 0.0f;
-
-	/** Cooldown duration in seconds */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Ability|Stats", meta = (ClampMin = "0.0"))
-	float Cooldown = 1.0f;
-
-	/** Mana or resource cost */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Ability|Stats", meta = (ClampMin = "0.0"))
-	float ManaCost = 0.0f;
-
-	/** Base damage/heal amount */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Ability|Stats")
-	float BasePower = 0.0f;
-
-	/** Duration of effect (for buffs/debuffs) */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Ability|Stats", meta = (ClampMin = "0.0"))
-	float Duration = 0.0f;
-
-	/** Cast time in seconds */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Ability|Animation", meta = (ClampMin = "0.0"))
-	float CastTime = 0.0f;
-
-	/** Animation montage to play when using ability */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Ability|Animation")
-	UAnimMontage* AbilityMontage;
-
-	/** Particle effect to spawn */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Ability|VFX")
-	UParticleSystem* AbilityEffect;
-
-	/** Niagara effect to spawn (alternative to particle system) */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Ability|VFX")
-	class UNiagaraSystem* NiagaraEffect;
-
-	/** Sound to play when ability is used */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Ability|Audio")
-	USoundBase* AbilitySound;
-
-	/** Blueprint class to spawn (for projectiles, summons, etc.) */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Ability|Advanced")
-	TSubclassOf<AActor> SpawnedActorClass;
-
-	/** Can this ability be interrupted? */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Ability|Advanced")
-	bool bCanBeInterrupted = true;
-
-	/** Does this ability require a target? */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Ability|Advanced")
-	bool bRequiresTarget = false;
-
-	virtual FPrimaryAssetId GetPrimaryAssetId() const override
-	{
-		return FPrimaryAssetId("Ability", GetFName());
-	}
+    // ============ Basic Info ============
+    UPROPERTY(EditDefaultsOnly, Category = "Basic")
+    FText AbilityName;
+    
+    UPROPERTY(EditDefaultsOnly, Category = "Basic")
+    FText Description;
+    
+    UPROPERTY(EditDefaultsOnly, Category = "Basic")
+    UTexture2D* Icon;
+    
+    UPROPERTY(EditDefaultsOnly, Category = "Basic")
+    FGameplayTag AbilityTag;
+    
+    // ============ Targeting ============
+    UPROPERTY(EditDefaultsOnly, Category = "Targeting")
+    FTargetingConfig TargetingConfig;
+    
+    UPROPERTY(EditDefaultsOnly, Category = "Targeting", AdvancedDisplay)
+    TSubclassOf<UTargetingStrategy> CustomTargetingClass;  // 특수 케이스용
+    
+    // ============ Cost & Cooldown ============
+    UPROPERTY(EditDefaultsOnly, Category = "Cost")
+    float ManaCost = 0.0f;
+    
+    UPROPERTY(EditDefaultsOnly, Category = "Cost")
+    float Cooldown = 0.0f;
+    
+    UPROPERTY(EditDefaultsOnly, Category = "Cost")
+    float CastTime = 0.0f;
+    
+    UPROPERTY(EditDefaultsOnly, Category = "Cost")
+    bool bCanMoveWhileCasting = false;
+    
+    UPROPERTY(EditDefaultsOnly, Category = "Cost")
+    int32 MaxCharges = 1;  // 충전 시스템 (예: 코르키 R)
+    
+    // ============ Delivery (발사 방식) ============
+    UPROPERTY(EditDefaultsOnly, Category = "Delivery")
+    FAbilityDeliveryConfig DeliveryConfig;
+    
+    // ============ Effects ============
+    UPROPERTY(EditDefaultsOnly, Category = "Effects")
+    TArray<FAbilityEffectData> Effects;
+    
+    // ============ Scaling ============
+    UPROPERTY(EditDefaultsOnly, Category = "Scaling")
+    TArray<FAbilityLevelData> LevelScaling;  // 5레벨 분량
+    
+    // ============ Visual & Audio ============
+    UPROPERTY(EditDefaultsOnly, Category = "Presentation")
+    UAnimMontage* CastAnimation;
+    
+    UPROPERTY(EditDefaultsOnly, Category = "Presentation")
+    UParticleSystem* CastVFX;
+    
+    UPROPERTY(EditDefaultsOnly, Category = "Presentation")
+    USoundBase* CastSound;
+    
+    // ============ Special Flags ============
+    UPROPERTY(EditDefaultsOnly, Category = "Advanced")
+    bool bIsPassive = false;
+    
+    UPROPERTY(EditDefaultsOnly, Category = "Advanced")
+    bool bRequiresFacing = true;  // 타겟을 바라봐야 하는지
+    
+    UPROPERTY(EditDefaultsOnly, Category = "Advanced")
+    TArray<FGameplayTag> RequiredBuffs;  // 필요한 버프 
 };

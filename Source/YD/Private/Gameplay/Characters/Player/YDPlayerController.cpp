@@ -3,6 +3,9 @@
 #include "GamePlay/Characters/Player/YDPlayerController.h"
 #include "GamePlay/Characters/Player/YDCharacter.h"
 #include "Gameplay/Components/CombatComponent.h"
+#include "Gameplay/Components/AbilityComponent.h"
+#include "Gameplay/Data/Ability.h"
+#include "Gameplay/Data/AbilityTypes.h"
 #include "GameFramework/Pawn.h"
 #include "Engine/World.h"
 #include "NiagaraFunctionLibrary.h"
@@ -17,6 +20,7 @@
 #include "EnhancedInputSubsystems.h"
 #include "InputActionValue.h"
 #include "Camera/CameraComponent.h"
+#include "Gameplay/Components/AbilityComponent.h"
 
 AYDPlayerController::AYDPlayerController()
 {
@@ -282,62 +286,94 @@ void AYDPlayerController::SpawnClickEffect(const FVector& Location)
 
 void AYDPlayerController::OnQSkillTriggered()
 {
-	if (CanUseSkill(QLastUsedTime, QCooldown))
-	{
-		QLastUsedTime = GetWorld()->GetTimeSeconds();
-		UE_LOG(LogTemp, Log, TEXT("Q Skill Used"));
+	UE_LOG(LogTemp, Warning, TEXT("=== Q Key Pressed ==="));
 
-		// TODO: Implement Q skill logic
+	APawn* ControlledPawn = GetPawn();
+	if (!ControlledPawn)
+	{
+		UE_LOG(LogTemp, Error, TEXT("No controlled pawn"));
+		return;
+	}
+
+	UAbilityComponent* AbilityComponent = ControlledPawn->FindComponentByClass<UAbilityComponent>();
+	if (!AbilityComponent)
+	{
+		UE_LOG(LogTemp, Error, TEXT("No AbilityComponent found on %s"), *ControlledPawn->GetName());
+		return;
+	}
+
+	UE_LOG(LogTemp, Log, TEXT("AbilityComponent found - Abilities count: %d"), AbilityComponent->Abilities.Num());
+
+	// Use GetAbility() instead of direct array access to avoid crash
+	UAbility* QAbility = AbilityComponent->GetAbility(EAbilitySlot::Q);
+	if (!QAbility)
+	{
+		UE_LOG(LogTemp, Error, TEXT("Q Ability not found! You need to:"));
+		UE_LOG(LogTemp, Error, TEXT("  1. Create DA_Fireball DataAsset"));
+		UE_LOG(LogTemp, Error, TEXT("  2. Call AbilityComponent->LearnAbility(DA_Fireball, EAbilitySlot::Q)"));
+		UE_LOG(LogTemp, Error, TEXT("  3. Call QAbility->LevelUp() at least once"));
+		return;
+	}
+
+	UE_LOG(LogTemp, Log, TEXT("Q Ability found - Level: %d, Cooldown: %.1f"),
+		QAbility->CurrentLevel, QAbility->RemainingCooldown);
+
+	if (!QAbility->CanCast())
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Q Ability cannot be cast:"));
+		UE_LOG(LogTemp, Warning, TEXT("  - Level: %d (needs > 0)"), QAbility->CurrentLevel);
+		UE_LOG(LogTemp, Warning, TEXT("  - Cooldown: %.1fs"), QAbility->RemainingCooldown);
+		UE_LOG(LogTemp, Warning, TEXT("  - IsCasting: %s"), QAbility->bIsCasting ? TEXT("Yes") : TEXT("No"));
+		return;
+	}
+
+	// PlayerController's ONLY job: Get cursor input data
+	// Let TargetingStrategy decide what's valid!
+
+	// Try to hit Pawn first
+	FHitResult HitResult;
+	bool bHitPawn = GetHitResultUnderCursor(ECC_Pawn, false, HitResult);
+
+	// If no pawn, try visibility (ground/objects)
+	if (!bHitPawn || !HitResult.GetActor())
+	{
+		GetHitResultUnderCursor(ECC_Visibility, false, HitResult);
+	}
+
+	// Build TargetData with ALL available information
+	FAbilityTargetData TargetData;
+	TargetData.bIsValid = HitResult.bBlockingHit;
+	TargetData.TargetLocation = HitResult.Location;
+	TargetData.Direction = (HitResult.Location - ControlledPawn->GetActorLocation()).GetSafeNormal();
+
+	// Include actor if we hit one
+	if (HitResult.GetActor())
+	{
+		TargetData.TargetActor = HitResult.GetActor();
+		UE_LOG(LogTemp, Log, TEXT("Cursor hit: %s at %s"), *HitResult.GetActor()->GetName(), *HitResult.Location.ToString());
 	}
 	else
 	{
-		UE_LOG(LogTemp, Warning, TEXT("Q Skill on cooldown"));
+		UE_LOG(LogTemp, Log, TEXT("Cursor hit location: %s"), *HitResult.Location.ToString());
 	}
+
+	UE_LOG(LogTemp, Warning, TEXT(">>> Executing Q Ability <<<"));
+	QAbility->Execute(TargetData);
 }
 
 void AYDPlayerController::OnWSkillTriggered()
 {
-	if (CanUseSkill(WLastUsedTime, WCooldown))
-	{
-		WLastUsedTime = GetWorld()->GetTimeSeconds();
-		UE_LOG(LogTemp, Log, TEXT("W Skill Used"));
-
-		// TODO: Implement W skill logic
-	}
-	else
-	{
-		UE_LOG(LogTemp, Warning, TEXT("W Skill on cooldown"));
-	}
+	
 }
 
 void AYDPlayerController::OnESkillTriggered()
 {
-	if (CanUseSkill(ELastUsedTime, ECooldown))
-	{
-		ELastUsedTime = GetWorld()->GetTimeSeconds();
-		UE_LOG(LogTemp, Log, TEXT("E Skill Used"));
-
-		// TODO: Implement E skill logic
-	}
-	else
-	{
-		UE_LOG(LogTemp, Warning, TEXT("E Skill on cooldown"));
-	}
+	
 }
 
 void AYDPlayerController::OnRSkillTriggered()
 {
-	if (CanUseSkill(RLastUsedTime, RCooldown))
-	{
-		RLastUsedTime = GetWorld()->GetTimeSeconds();
-		UE_LOG(LogTemp, Log, TEXT("R Skill Used"));
-
-		// TODO: Implement R skill logic
-	}
-	else
-	{
-		UE_LOG(LogTemp, Warning, TEXT("R Skill on cooldown"));
-	}
+	
 }
 
 bool AYDPlayerController::CanUseSkill(float LastUsedTime, float Cooldown)

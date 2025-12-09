@@ -3,6 +3,7 @@
 #include "Gameplay/Characters/Enemy/Enemy_Base.h"
 #include "Gameplay/Components/CharacterStatComponent.h"
 #include "Gameplay/Components/CombatComponent.h"
+#include "Gameplay/Data/TargetingStrategy.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Blueprint/AIBlueprintHelperLibrary.h"
 #include "Kismet/GameplayStatics.h"
@@ -22,6 +23,7 @@ AEnemy_Base::AEnemy_Base()
 	ExperienceReward = 30;
 	DetectionRange = 800.f;
 	DetectionTimer = 0.f;
+	MoveUpdateTimer = 0.f;
 	MovementTarget = nullptr;
 
 	// Add "Enemy" tag for identification
@@ -65,6 +67,27 @@ void AEnemy_Base::BeginPlay()
 
 	// Get references to components (inherited from YDCharacter)
 	// StatComponent and CombatComponent are already created in parent class
+
+	// Initialize TargetingStrategy for enemy detection
+	InitializeTargetingStrategy();
+}
+
+void AEnemy_Base::InitializeTargetingStrategy()
+{
+	EnemyDetectionStrategy = NewObject<UTargetingStrategy>(this);
+
+	if (EnemyDetectionStrategy)
+	{
+		// Configure for auto-targeting enemies
+		FTargetingConfig DetectionConfig;
+		DetectionConfig.TargetingType = ETargetingType::Auto;
+		DetectionConfig.Range = DetectionRange;
+		DetectionConfig.TargetFilter = static_cast<int32>(ETargetFilter::Enemy) | static_cast<int32>(ETargetFilter::Champion);
+		DetectionConfig.MaxTargets = 1; // Only find closest enemy
+		DetectionConfig.bRequiresLineOfSight = false;
+
+		EnemyDetectionStrategy->Initialize(DetectionConfig, this);
+	}
 }
 
 void AEnemy_Base::Tick(float DeltaTime)
@@ -79,8 +102,14 @@ void AEnemy_Base::Tick(float DeltaTime)
 		SearchForEnmies();
 	}
 
-	if (!CombatComponent || !GetController())
+	if (!CombatComponent)
 		return;
+
+	if (!GetController())
+	{
+		UE_LOG(LogTemp, Warning, TEXT("%s has no controller!"), *GetName());
+		return;
+	}
 
 	// Get current target (either combat target or movement target)
 	AActor* CurrentTargetActor = CombatComponent->GetTarget();
@@ -92,10 +121,11 @@ void AEnemy_Base::Tick(float DeltaTime)
 	// If we have a target, handle movement and combat
 	if (CurrentTargetActor)
 	{
-		// Check if we're in attack range
-		float DistanceToTarget = FVector::Dist(GetActorLocation(), CurrentTargetActor->GetActorLocation());
+		// Get attack range for combat
 		UCharacterStatComponent* Stats = FindComponentByClass<UCharacterStatComponent>();
 		float AttackRange = Stats ? Stats->GetCurrentAttackRange() : 150.f;
+
+		float DistanceToTarget = FVector::Dist(GetActorLocation(), CurrentTargetActor->GetActorLocation());
 
 		if (DistanceToTarget <= AttackRange)
 		{
@@ -110,7 +140,14 @@ void AEnemy_Base::Tick(float DeltaTime)
 		else
 		{
 			// Not in range - keep moving towards target
-			UAIBlueprintHelperLibrary::SimpleMoveToActor(GetController(), CurrentTargetActor);
+			// Only update move command every 0.2 seconds to avoid constant path recalculation
+			MoveUpdateTimer += DeltaTime;
+
+			if (MoveUpdateTimer >= 0.2f)
+			{
+				MoveUpdateTimer = 0.f;
+				UAIBlueprintHelperLibrary::SimpleMoveToActor(GetController(), CurrentTargetActor);
+			}
 		}
 	}
 }
@@ -151,42 +188,35 @@ void AEnemy_Base::SearchForEnmies()
 	if (CombatComponent && CombatComponent->GetTarget())
 		return;
 
-	// Sphere overlap to find enemies in detection range
-	TArray<FOverlapResult> OverlapResults;
-	FCollisionShape Sphere = FCollisionShape::MakeSphere(DetectionRange);
-	FCollisionQueryParams QueryParams;
-	QueryParams.AddIgnoredActor(this);
+	if (!EnemyDetectionStrategy)
+		return;
 
-	// Overlap with Pawn channel
-	GetWorld()->OverlapMultiByChannel(
-		OverlapResults,
-		GetActorLocation(),
-		FQuat::Identity,
-		ECC_Pawn,
-		Sphere,
-		QueryParams
-	);
+	// Use TargetingStrategy to find enemies
+	FAbilityTargetData TargetData;
+	TargetData.bIsValid = true; // For Auto targeting
 
+	TArray<AActor*> PotentialEnemies = EnemyDetectionStrategy->GetValidTargets(TargetData);
+
+	// Filter out dead enemies and find closest alive enemy
 	AActor* ClosestEnemy = nullptr;
 	float ClosestDistance = DetectionRange;
 
-	for (const FOverlapResult& Result : OverlapResults)
+	for (AActor* Enemy : PotentialEnemies)
 	{
-		AActor* Actor = Result.GetActor();
-		if (!Actor || !IsEnemy(Actor))
+		if (!Enemy)
 			continue;
 
 		// Check if target is alive
-		UCharacterStatComponent* TargetStats = Actor->FindComponentByClass<UCharacterStatComponent>();
+		UCharacterStatComponent* TargetStats = Enemy->FindComponentByClass<UCharacterStatComponent>();
 		if (!TargetStats || !TargetStats->IsAlive())
 			continue;
 
 		// Find closest enemy
-		float Distance = FVector::Dist(GetActorLocation(), Actor->GetActorLocation());
+		float Distance = FVector::Dist(GetActorLocation(), Enemy->GetActorLocation());
 		if (Distance < ClosestDistance)
 		{
 			ClosestDistance = Distance;
-			ClosestEnemy = Actor;
+			ClosestEnemy = Enemy;
 		}
 	}
 

@@ -25,6 +25,9 @@ protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
 
+	// Called every frame
+	virtual void Tick(float DeltaTime) override;
+
 	// Rotate to Target if Valid
 	void RotateToTarget();
 
@@ -40,10 +43,10 @@ protected:
 public:
 	UPROPERTY(BlueprintAssignable, Category = "Projectile")
 	FOnProjectileImpact OnProjectileImpact;
-	
-protected:
+
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components", meta = (AllowPrivateAccess = "true"))
 	UProjectileMovementComponent* ProjectileMovement;
+protected:
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components", meta = (AllowPrivateAccess = "true"))
 	UBoxComponent* ProjectileCollision;
@@ -55,13 +58,16 @@ protected:
 	UStaticMeshComponent* ProjectileMesh;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Projectile|Settings")
-	float Speed;
+	float Speed = 1000.f;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Projectile|Settings")
-	float Gravity;
+	float Gravity = 0.f;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Projectile|Settings")
-	bool bIsHoming;
+	bool bIsHoming = false;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Projectile|Settings")
+	float HeightAboveGround = 80.f;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Projectile|Target")
 	AActor* Target;

@@ -63,6 +63,9 @@ public:
 	float BaseAttackDamage = 50.f;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stats|Base")
+	float BaseAbilityPower = 0.f;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stats|Base")
 	float BaseArmor = 10.f;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stats|Base")
@@ -83,6 +86,9 @@ public:
 
 	UPROPERTY(BlueprintReadOnly, Category = "Stats|Current")
 	float CurrentAttackDamage;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Stats|Current")
+	float CurrentAbilityPower;
 
 	UPROPERTY(BlueprintReadOnly, Category = "Stats|Current")
 	float CurrentArmor;
@@ -138,6 +144,9 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Stats")
 	float GetCurrentAttackDamage() const { return CurrentAttackDamage; }
 
+	UFUNCTION(BlueprintPure, Category = "Stats")
+	float GetCurrentAbilityPower() const { return CurrentAbilityPower; }
+	
 	UFUNCTION(BlueprintPure, Category = "Stats")
 	float GetCurrentAttackSpeed() const { return CurrentAttackSpeed; }
 

@@ -8,6 +8,7 @@
 
 class UCharacterStatComponent;
 class UCombatComponent;
+class UTargetingStrategy;
 class AActor;
 class AEnemy_Base;
 
@@ -48,7 +49,9 @@ protected:
 	FOnEnemyDeath OnEnemyDeath;
 
 	void SearchForEnmies();
-	
+
+	void InitializeTargetingStrategy();
+
 protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AI")
 	AActor* MovementTarget;
@@ -63,9 +66,14 @@ protected:
 	float DetectionRange;
 
 	float DetectionTimer;
+	float MoveUpdateTimer;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat")
 	UAnimMontage* AttackMontage;
+
+	// TargetingStrategy for enemy detection
+	UPROPERTY()
+	UTargetingStrategy* EnemyDetectionStrategy;
 
 private:
 	UFUNCTION()
