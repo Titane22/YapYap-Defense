@@ -97,30 +97,73 @@ void AProjectile_Base::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
-	// Trace down to find ground and maintain fixed height above terrain
 	FVector CurrentLocation = GetActorLocation();
+	FVector BoxExtent = ProjectileCollision->GetScaledBoxExtent();
 
-	FHitResult GroundHit;
-	FVector TraceStart = CurrentLocation + FVector(0, 0, 500.f); // Start above current position
-	FVector TraceEnd = CurrentLocation - FVector(0, 0, 2000.f); // Trace down
+	TArray<FVector> TraceOffsets;
+	TraceOffsets.Add(FVector(BoxExtent.X * 0.8f, BoxExtent.Y * 0.8f, 0.f));
+	TraceOffsets.Add(FVector(BoxExtent.X * 0.8f, -BoxExtent.Y * 0.8f, 0.f));
+	TraceOffsets.Add(FVector(-BoxExtent.X * 0.8f, BoxExtent.Y * 0.8f, 0.f));
+	TraceOffsets.Add(FVector(-BoxExtent.X * 0.8f, -BoxExtent.Y * 0.8f, 0.f));
 
 	FCollisionQueryParams TraceParams;
 	TraceParams.AddIgnoredActor(this);
 	if (GetOwner())
 		TraceParams.AddIgnoredActor(GetOwner());
 
-	if (GetWorld()->LineTraceSingleByChannel(GroundHit, TraceStart, TraceEnd, ECC_Visibility, TraceParams))
+	TArray<float> GroundHeights;
+	bool bAllTracesHit = true;
+
+	for (const FVector& Offset : TraceOffsets)
 	{
-		// Found ground - adjust Z position to maintain fixed height
-		float DesiredZ = GroundHit.Location.Z + HeightAboveGround;
-		float CurrentZ = CurrentLocation.Z;
+		FVector TraceLocation = CurrentLocation + Offset;
+		FVector TraceStart = TraceLocation + FVector(0.f, 0.f, 500.f);
+		FVector TraceEnd = TraceLocation - FVector(0.f, 0.f, 2000.f);
 
-		// Smoothly adjust height (or snap directly)
-		FVector NewLocation = CurrentLocation;
-		NewLocation.Z = DesiredZ;
-
-		SetActorLocation(NewLocation);
+		FHitResult Hit;
+		if (GetWorld()->LineTraceSingleByChannel(Hit, TraceStart, TraceEnd, ECollisionChannel::ECC_Visibility, TraceParams))
+		{
+			GroundHeights.Add(Hit.Location.Z);
+		}
+		else
+		{
+			bAllTracesHit = false;
+			break;
+		}
 	}
+
+	if (bAllTracesHit && GroundHeights.Num() == TraceOffsets.Num())
+	{
+		// Find min and max heights
+		float MinHeight = GroundHeights[0];
+		float MaxHeight = GroundHeights[0];
+		float AverageHeight = 0.f;
+
+		for (float Height : GroundHeights)
+		{
+			MinHeight = FMath::Min(MinHeight, Height);
+			MaxHeight = FMath::Max(MaxHeight, Height);
+			AverageHeight += Height;
+		}
+		AverageHeight /= GroundHeights.Num();
+
+		if ((MaxHeight - MinHeight) <= HeightTolerance)
+		{
+			// All heights are similar - we're on flat ground or completely airborne
+			// Use average height for smooth result
+			float DesiredZ = AverageHeight + HeightAboveGround;
+
+			// Smoothly interpolate from current height to desired height
+			float NewZ = FMath::FInterpTo(CurrentLocation.Z, DesiredZ, DeltaTime, HeightAdjustmentSpeed);
+
+			FVector NewLocation = CurrentLocation;
+			NewLocation.Z = NewZ;
+
+			SetActorLocation(NewLocation);
+		}
+		// If heights differ too much, we're over a cliff edge - don't adjust
+	}
+	
 }
 
 void AProjectile_Base::RotateToTarget()
@@ -167,6 +210,22 @@ void AProjectile_Base::SpawnImpactEffect(FVector Location)
 void AProjectile_Base::OnComponentHit(UPrimitiveComponent* HitComponent, AActor* OtherActor,
 	UPrimitiveComponent* OtherComponent, FVector NormalImpulse, const FHitResult& Hit)
 {
+	// Only process collision if the hit actor has specific tags
+	// Ignore terrain/background objects that don't have tags
+	if (OtherActor)
+	{
+		bool bShouldProcessHit = OtherActor->Tags.Contains(FName("Enemy")) ||
+		                         OtherActor->Tags.Contains(FName("Structure")) ||
+		                         OtherActor->Tags.Contains(FName("Character")) ||
+		                         OtherActor->Tags.Contains(FName("Destructible"));
+
+		if (!bShouldProcessHit)
+		{
+			// Ignore collision with terrain/background objects
+			return;
+		}
+	}
+
 	UE_LOG(LogTemp, Warning, TEXT("=== Projectile Hit ==="));
 	UE_LOG(LogTemp, Log, TEXT("Hit Actor: %s"), OtherActor ? *OtherActor->GetName() : TEXT("None"));
 	UE_LOG(LogTemp, Log, TEXT("Hit Location: %s"), *Hit.ImpactPoint.ToString());

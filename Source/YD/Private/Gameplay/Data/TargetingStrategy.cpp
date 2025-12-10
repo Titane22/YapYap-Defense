@@ -452,9 +452,23 @@ TArray<AActor*> UTargetingStrategy::GetActorsInSphere(const FVector& Center, flo
 
 	for (const FOverlapResult& Overlap : Overlaps)
 	{
-		if (Overlap.GetActor())
+		AActor* Actor = Overlap.GetActor();
+		if (Actor)
 		{
-			FoundActors.Add(Overlap.GetActor());
+			// Only collect actors with gameplay-relevant tags
+			// Ignore terrain/background objects without tags
+			bool bHasGameplayTag = Actor->Tags.Contains(FName("Enemy")) ||
+			                       Actor->Tags.Contains(FName("Structure")) ||
+			                       Actor->Tags.Contains(FName("Character")) ||
+			                       Actor->Tags.Contains(FName("Minion")) ||
+			                       Actor->Tags.Contains(FName("Champion")) ||
+			                       Actor->Tags.Contains(FName("Neutral")) ||
+			                       Actor->Tags.Contains(FName("Player"));
+
+			if (bHasGameplayTag)
+			{
+				FoundActors.Add(Actor);
+			}
 		}
 	}
 
@@ -493,9 +507,23 @@ TArray<AActor*> UTargetingStrategy::GetActorsInBox(const FVector& Start, const F
 
 	for (const FOverlapResult& Overlap : Overlaps)
 	{
-		if (Overlap.GetActor())
+		AActor* Actor = Overlap.GetActor();
+		if (Actor)
 		{
-			FoundActors.Add(Overlap.GetActor());
+			// Only collect actors with gameplay-relevant tags
+			// Ignore terrain/background objects without tags
+			bool bHasGameplayTag = Actor->Tags.Contains(FName("Enemy")) ||
+			                       Actor->Tags.Contains(FName("Structure")) ||
+			                       Actor->Tags.Contains(FName("Character")) ||
+			                       Actor->Tags.Contains(FName("Minion")) ||
+			                       Actor->Tags.Contains(FName("Champion")) ||
+			                       Actor->Tags.Contains(FName("Neutral")) ||
+			                       Actor->Tags.Contains(FName("Player"));
+
+			if (bHasGameplayTag)
+			{
+				FoundActors.Add(Actor);
+			}
 		}
 	}
 

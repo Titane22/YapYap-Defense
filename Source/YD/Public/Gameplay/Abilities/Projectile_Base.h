@@ -69,6 +69,12 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Projectile|Settings")
 	float HeightAboveGround = 80.f;
 
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Projectile|Settings")
+	float HeightAdjustmentSpeed = 3.f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Projectile|Settings")
+	float HeightTolerance = 50.f;
+
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Projectile|Target")
 	AActor* Target;
 

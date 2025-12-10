@@ -346,11 +346,27 @@ void AYDPlayerController::OnQSkillTriggered()
 	TargetData.TargetLocation = HitResult.Location;
 	TargetData.Direction = (HitResult.Location - ControlledPawn->GetActorLocation()).GetSafeNormal();
 
-	// Include actor if we hit one
-	if (HitResult.GetActor())
+	// Include actor only if it has gameplay-relevant tags
+	AActor* HitActor = HitResult.GetActor();
+	if (HitActor)
 	{
-		TargetData.TargetActor = HitResult.GetActor();
-		UE_LOG(LogTemp, Log, TEXT("Cursor hit: %s at %s"), *HitResult.GetActor()->GetName(), *HitResult.Location.ToString());
+		bool bHasGameplayTag = HitActor->Tags.Contains(FName("Enemy")) ||
+		                       HitActor->Tags.Contains(FName("Structure")) ||
+		                       HitActor->Tags.Contains(FName("Character")) ||
+		                       HitActor->Tags.Contains(FName("Minion")) ||
+		                       HitActor->Tags.Contains(FName("Champion")) ||
+		                       HitActor->Tags.Contains(FName("Neutral")) ||
+		                       HitActor->Tags.Contains(FName("Player"));
+
+		if (bHasGameplayTag)
+		{
+			TargetData.TargetActor = HitActor;
+			UE_LOG(LogTemp, Log, TEXT("Cursor hit valid target: %s at %s"), *HitActor->GetName(), *HitResult.Location.ToString());
+		}
+		else
+		{
+			UE_LOG(LogTemp, Log, TEXT("Cursor hit background object (ignored): %s"), *HitActor->GetName());
+		}
 	}
 	else
 	{
