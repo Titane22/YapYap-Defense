@@ -37,6 +37,9 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Character")
 	UCharacter_Data* CurrentCharacterData;
 
+	UPROPERTY()
+	UAnimMontage* AttackMontage;
+	
 public:
 	APlayer_Base();
 
@@ -64,4 +67,7 @@ public:
 
 	/** Apply stats from character data */
 	void ApplyStats(UCharacter_Data* CharacterData);
+
+protected:
+	void Attack(AActor* Target);
 };

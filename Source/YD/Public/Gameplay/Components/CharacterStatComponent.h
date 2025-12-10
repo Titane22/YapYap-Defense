@@ -18,6 +18,9 @@ struct FStatModifier
 	float HealthModifier = 0.f;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	float ManaModifier = 0.f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	float AttackDamageModifier = 0.f;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
@@ -37,6 +40,7 @@ struct FStatModifier
 
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnHealthChanged, float, CurrentHealth, float, MaxHealth);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnManaChanged, float, CurrentMana, float, MaxMana);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnDeath);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnStatsUpdated, FStatModifier, Modifier);
 
@@ -59,6 +63,9 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stats|Base")
 	float BaseMaxHealth = 500.f;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stats|Base")
+	float BaseMaxMana = 150.f;
+	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stats|Base")
 	float BaseAttackDamage = 50.f;
 
@@ -83,6 +90,12 @@ public:
 
 	UPROPERTY(BlueprintReadOnly, Category = "Stats|Current")
 	float CurrentMaxHealth;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Stats|Current")
+	float CurrentMana;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Stats|Current")
+	float CurrentMaxMana;
 
 	UPROPERTY(BlueprintReadOnly, Category = "Stats|Current")
 	float CurrentAttackDamage;
@@ -111,6 +124,9 @@ public:
 	FOnHealthChanged OnHealthChanged;
 
 	UPROPERTY(BlueprintAssignable, Category = "Stats|Events")
+	FOnManaChanged OnManaChanged;
+	
+	UPROPERTY(BlueprintAssignable, Category = "Stats|Events")
 	FOnDeath OnDeath;
 
 	UPROPERTY(BlueprintAssignable, Category = "Stats|Events")
@@ -121,7 +137,13 @@ public:
 	void TakeDamage(float Damage, AActor* DamageDealer);
 
 	UFUNCTION(BlueprintCallable, Category = "Stats")
+	void UseMana(float Amount);
+	
+	UFUNCTION(BlueprintCallable, Category = "Stats")
 	void Heal(float Amount);
+
+	UFUNCTION(BlueprintCallable, Category = "Stats")
+	void RestoreMana(float Amount);
 
 	UFUNCTION(BlueprintCallable, Category = "Stats")
 	void AddStatModifier(FStatModifier Modifier);
@@ -138,6 +160,9 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Stats")
 	float GetHealthPercent() const { return CurrentHealth > 0 ? CurrentHealth / CurrentMaxHealth : 0.f; }
 
+	UFUNCTION(BlueprintPure, Category = "Stats")
+	float GetManaPercent() const { return CurrentMana > 0 ? CurrentMana / CurrentMaxMana : 0.f; }
+	
 	UFUNCTION(BlueprintPure, Category = "Stats")
 	float GetCurrentAttackRange() const { return CurrentAttackRange; }
 

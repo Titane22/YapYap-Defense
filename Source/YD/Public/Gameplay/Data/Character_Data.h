@@ -55,6 +55,9 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Character|Visual")
 	FRotator MeshRotationOffset = FRotator(0.0f, -90.0f, 0.0f);
 
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Character|Visual")
+	UAnimMontage* AttackMontage;
+		
 	// ========== QWER Abilities ==========
 
 	/** Q Ability */

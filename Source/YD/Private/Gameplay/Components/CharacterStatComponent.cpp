@@ -16,6 +16,7 @@ void UCharacterStatComponent::BeginPlay()
 
 	// Initialize current stats from base stats
 	CurrentHealth = BaseMaxHealth;
+	CurrentMana = BaseMaxMana;
 	RecalculateStats();
 }
 
@@ -52,6 +53,18 @@ void UCharacterStatComponent::TakeDamage(float Damage, AActor* DamageDealer)
 		*GetOwner()->GetName(), Damage, ActualDamage, CurrentHealth, CurrentMaxHealth);
 }
 
+void UCharacterStatComponent::UseMana(float Amount)
+{
+	if (!IsAlive())
+		return;
+
+	CurrentMana = FMath::Max(0.f, CurrentMana - Amount);
+
+	OnManaChanged.Broadcast(CurrentMana, CurrentMaxMana);
+	UE_LOG(LogTemp, Log, TEXT("%s healed %.1f. Health: %.1f/%.1f"),
+		*GetOwner()->GetName(), Amount, CurrentMana, CurrentMaxMana);
+}
+
 void UCharacterStatComponent::Heal(float Amount)
 {
 	if (!IsAlive())
@@ -62,6 +75,18 @@ void UCharacterStatComponent::Heal(float Amount)
 
 	UE_LOG(LogTemp, Log, TEXT("%s healed %.1f. Health: %.1f/%.1f"),
 		*GetOwner()->GetName(), Amount, CurrentHealth, CurrentMaxHealth);
+}
+
+void UCharacterStatComponent::RestoreMana(float Amount)
+{
+	if (!IsAlive())
+		return;
+
+	CurrentMana = FMath::Min(CurrentMaxMana, CurrentMana + Amount);
+	OnManaChanged.Broadcast(CurrentMana, CurrentMaxMana);
+
+	UE_LOG(LogTemp, Log, TEXT("%s healed %.1f. Health: %.1f/%.1f"),
+		*GetOwner()->GetName(), Amount, CurrentMana, CurrentMaxMana);
 }
 
 void UCharacterStatComponent::AddStatModifier(FStatModifier Modifier)
@@ -109,6 +134,7 @@ void UCharacterStatComponent::RecalculateStats()
 {
 	// Start with base stats
 	CurrentMaxHealth = BaseMaxHealth;
+	CurrentMaxMana = BaseMaxMana;
 	CurrentAttackDamage = BaseAttackDamage;
 	CurrentArmor = BaseArmor;
 	CurrentMoveSpeed = BaseMoveSpeed;
@@ -119,15 +145,17 @@ void UCharacterStatComponent::RecalculateStats()
 	for (const FStatModifier& Modifier : StatModifiers)
 	{
 		CurrentMaxHealth += Modifier.HealthModifier;
+		CurrentMaxMana += Modifier.ManaModifier;
 		CurrentAttackDamage += Modifier.AttackDamageModifier;
 		CurrentArmor += Modifier.ArmorModifier;
 		CurrentMoveSpeed += Modifier.MoveSpeedModifier;
 		CurrentAttackSpeed += Modifier.AttackSpeedModifier;
 	}
 
-	// Clamp current health to new max health
+	// Clamp current health to new max health & Mana
 	CurrentHealth = FMath::Min(CurrentHealth, CurrentMaxHealth);
-
+	CurrentMana = FMath::Min(CurrentMaxMana, CurrentMaxMana);
+	
 	// Update character movement speed if owner is a character
 	if (ACharacter* Character = Cast<ACharacter>(GetOwner()))
 	{
@@ -138,6 +166,7 @@ void UCharacterStatComponent::RecalculateStats()
 	}
 
 	OnHealthChanged.Broadcast(CurrentHealth, CurrentMaxHealth);
+	OnManaChanged.Broadcast(CurrentMana, CurrentMaxMana);
 }
 
 void UCharacterStatComponent::ResetStats()

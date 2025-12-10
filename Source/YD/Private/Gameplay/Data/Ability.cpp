@@ -13,6 +13,7 @@
 #include "Blueprint/AIBlueprintHelperLibrary.h"
 #include "Net/UnrealNetwork.h"
 #include "TimerManager.h"
+#include "Gameplay/Components/CharacterStatComponent.h"
 #include "Kismet/GameplayStatics.h"
 
 void UAbility::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
@@ -563,11 +564,11 @@ void UAbility::ConsumeResources()
 	if (!AbilityData)
 		return;
 
-	// TODO: 마나 소비 구현
-	// if (UResourceComponent* Resource = OwningActor->FindComponentByClass<UResourceComponent>())
-	// {
-	//     Resource->ConsumeMana(GetManaCost());
-	// }
+	// 마나 소비 구현
+	if (UCharacterStatComponent* Resource = OwningActor->FindComponentByClass<UCharacterStatComponent>())
+	{
+	     Resource->UseMana(GetManaCost());
+	}
 
 	// 충전 소비
 	if (AbilityData->MaxCharges > 1)
@@ -578,8 +579,11 @@ void UAbility::ConsumeResources()
 
 void UAbility::RefundResources()
 {
-	// TODO: 마나 환불 구현
-
+	// 마나 환불 구현
+	if (UCharacterStatComponent* Resource = OwningActor->FindComponentByClass<UCharacterStatComponent>())
+	{
+		Resource->RestoreMana(GetManaCost());
+	}
 	// 충전 환불
 	if (AbilityData->MaxCharges > 1)
 	{
@@ -636,8 +640,12 @@ bool UAbility::CanCast() const
 	if (OwningComponent->bIsStunned)
 		return false;
 
-	// TODO: 마나 체크
-	// if (GetManaCost() > CurrentMana) return false;
+	// 마나 체크
+	if (UCharacterStatComponent* Resource = OwningActor->FindComponentByClass<UCharacterStatComponent>())
+	{
+		if (GetManaCost() > Resource->CurrentMana)
+			return false;
+	}
 
 	return true;
 }

@@ -26,7 +26,7 @@ class YD_API UAbility : public UObject
 public:
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 	// ============ References ============
-	UPROPERTY()
+	UPROPERTY(BlueprintReadOnly, Category = "Ability")
 	UAbilityData* AbilityData;  // 데이터 참조
     
 	UPROPERTY()

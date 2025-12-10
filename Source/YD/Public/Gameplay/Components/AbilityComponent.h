@@ -38,7 +38,7 @@ public:
 	TArray<UAbilityData*> AbilityDataAssets;
 
 	// ============ Runtime Instances ============
-	UPROPERTY()
+	UPROPERTY(BlueprintReadOnly, Category = "Skill")
 	TArray<UAbility*> Abilities;
 
 	UPROPERTY()

@@ -9,6 +9,7 @@
 #include "Camera/CameraComponent.h"
 #include "GameFramework/SpringArmComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
+#include "Gameplay/Components/CombatComponent.h"
 
 APlayer_Base::APlayer_Base()
 {
@@ -69,6 +70,11 @@ void APlayer_Base::BeginPlay()
 	{
 		InitializeFromCharacterData(CurrentCharacterData);
 	}
+
+	if (CombatComponent)
+	{
+		CombatComponent->OnAttackStarted.AddDynamic(this, &APlayer_Base::Attack);
+	}
 }
 
 void APlayer_Base::ApplyVisualSettings(UCharacter_Data* CharacterData)
@@ -112,6 +118,11 @@ void APlayer_Base::ApplyVisualSettings(UCharacter_Data* CharacterData)
 		UE_LOG(LogTemplateCharacter, Log, TEXT("Applied %d materials"), CharacterData->Materials.Num());
 	}
 
+	if (CharacterData->AttackMontage)
+	{
+		AttackMontage = CharacterData->AttackMontage;
+	}
+	
 	// Apply transform settings
 	MeshComp->SetRelativeScale3D(CharacterData->MeshScale);
 	MeshComp->SetRelativeLocation(CharacterData->MeshLocationOffset);
@@ -136,6 +147,7 @@ void APlayer_Base::ApplyStats(UCharacter_Data* CharacterData)
 	if (CharacterStatComponent)
 	{
 		CharacterStatComponent->BaseMaxHealth = CharacterData->BaseHealth;
+		CharacterStatComponent->BaseMaxMana = CharacterData->BaseMana;
 		CharacterStatComponent->BaseAttackDamage = CharacterData->BaseAttackDamage;
 		CharacterStatComponent->BaseAttackSpeed = CharacterData->BaseAttackSpeed;
 		CharacterStatComponent->BaseArmor = CharacterData->BaseArmor;
@@ -146,9 +158,37 @@ void APlayer_Base::ApplyStats(UCharacter_Data* CharacterData)
 
 		// Initialize to full health after applying new stats
 		CharacterStatComponent->CurrentHealth = CharacterStatComponent->CurrentMaxHealth;
+		CharacterStatComponent->CurrentMana = CharacterStatComponent->CurrentMaxMana;
 
 		UE_LOG(LogTemplateCharacter, Log, TEXT("Applied stats - Health: %.1f/%.1f, Damage: %.1f, Speed: %.1f"),
 			CharacterStatComponent->CurrentHealth, CharacterStatComponent->CurrentMaxHealth,
 			CharacterData->BaseAttackDamage, CharacterData->BaseAttackSpeed);
+	}
+}
+
+void APlayer_Base::Attack(AActor* Target)
+{
+	// Play attack montage if set
+	if (AttackMontage)
+	{
+		UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
+		if (AnimInstance)
+		{
+			// Stop current montage and play new one for responsive attacks
+			if (AnimInstance->IsAnyMontagePlaying())
+			{
+				AnimInstance->Montage_Stop(0.2f);
+			}
+			AnimInstance->Montage_Play(AttackMontage, 1.0f);
+			UE_LOG(LogTemp, Log, TEXT("%s playing attack montage on %s"), *GetName(), Target ? *Target->GetName() : TEXT("None"));
+		}
+		else
+		{
+			UE_LOG(LogTemp, Warning, TEXT("%s has no AnimInstance!"), *GetName());
+		}
+	}
+	else
+	{
+		UE_LOG(LogTemp, Warning, TEXT("%s has no AttackMontage set!"), *GetName());
 	}
 }

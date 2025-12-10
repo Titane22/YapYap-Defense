@@ -26,7 +26,7 @@ public:
     UPROPERTY(EditDefaultsOnly, Category = "Basic")
     FText Description;
     
-    UPROPERTY(EditDefaultsOnly, Category = "Basic")
+    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Basic")
     UTexture2D* Icon;
     
     UPROPERTY(EditDefaultsOnly, Category = "Basic")
