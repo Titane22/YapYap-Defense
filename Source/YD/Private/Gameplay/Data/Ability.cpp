@@ -817,3 +817,65 @@ void UAbility::PlayPresentation(const FVector& Location)
 		);
 	}
 }
+
+void UAbility::SpawnProjectile(const FVector& SpawnLocation, const FRotator& SpawnRotation)
+{
+	if (!AbilityData)
+	{
+		UE_LOG(LogTemp, Error, TEXT("SpawnProjectile: No AbilityData!"));
+		return;
+	}
+
+	if (!AbilityData->DeliveryConfig.ProjectileClass)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("SpawnProjectile: No ProjectileClass set for ability %s"),
+			*AbilityData->AbilityName.ToString());
+		return;
+	}
+
+	UWorld* World = OwningActor ? OwningActor->GetWorld() : nullptr;
+	if (!World)
+	{
+		UE_LOG(LogTemp, Error, TEXT("SpawnProjectile: No World!"));
+		return;
+	}
+
+	// Spawn projectile
+	FActorSpawnParameters SpawnParams;
+	SpawnParams.Owner = OwningActor;
+	SpawnParams.Instigator = Cast<APawn>(OwningActor);
+	SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+
+	AProjectile_Base* Projectile = World->SpawnActor<AProjectile_Base>(
+		AbilityData->DeliveryConfig.ProjectileClass,
+		SpawnLocation,
+		SpawnRotation,
+		SpawnParams
+	);
+
+	if (Projectile)
+	{
+		// Configure projectile with ability data
+		if (Projectile->ProjectileMovement)
+		{
+			Projectile->ProjectileMovement->InitialSpeed = AbilityData->DeliveryConfig.ProjectileSpeed;
+			Projectile->ProjectileMovement->MaxSpeed = AbilityData->DeliveryConfig.ProjectileSpeed;
+
+			if (AbilityData->DeliveryConfig.bIsHoming && PendingTargetData.TargetActor)
+			{
+				Projectile->ProjectileMovement->bIsHomingProjectile = true;
+				Projectile->ProjectileMovement->HomingAccelerationMagnitude = AbilityData->DeliveryConfig.HomingAcceleration;
+				Projectile->ProjectileMovement->HomingTargetComponent = PendingTargetData.TargetActor->GetRootComponent();
+			}
+		}
+
+		UE_LOG(LogTemp, Log, TEXT("Spawned projectile for ability %s at %s"),
+			*AbilityData->AbilityName.ToString(),
+			*SpawnLocation.ToString());
+	}
+	else
+	{
+		UE_LOG(LogTemp, Error, TEXT("Failed to spawn projectile for ability %s"),
+			*AbilityData->AbilityName.ToString());
+	}
+}

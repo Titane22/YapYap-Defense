@@ -4,6 +4,7 @@
 #include "Gameplay/Components/CharacterStatComponent.h"
 #include "GameFramework/Actor.h"
 #include "Engine/World.h"
+#include "GameFramework/Character.h"
 
 UCombatComponent::UCombatComponent()
 {
@@ -42,6 +43,7 @@ void UCombatComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActo
 		// Check if target is still valid
 		if (!IsTargetValid())
 		{
+			CancelAttackMontage();
 			ClearTarget();
 			return;
 		}
@@ -68,9 +70,15 @@ void UCombatComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActo
 		}
 		else
 		{
-			// Debug: Cooldown not ready
-			UE_LOG(LogTemp, Log, TEXT("%s: Attack on cooldown. Time: %.2f / %.2f"),
-				*GetOwner()->GetName(), TimeSinceLastAttack, AttackCooldown);
+			// During attack animation (cooldown not ready)
+			// Check if target moved out of range and cancel montage if needed
+			if (!IsInAttackRange(CurrentTarget))
+			{
+				UE_LOG(LogTemp, Warning, TEXT("%s: Target escaped during attack animation, cancelling"), *GetOwner()->GetName());
+				CancelAttackMontage();
+				// Don't clear target, just reset cooldown to try again
+				TimeSinceLastAttack = AttackCooldown;
+			}
 		}
 	}
 }
@@ -130,8 +138,30 @@ void UCombatComponent::PerformAttack()
 	if (!CurrentTarget || !StatComponent)
 		return;
 
-	// Broadcast attack started event (for animation)
+	// Only broadcast attack started event (for animation)
+	// Damage will be applied later via AnimNotify_MeleeAttack
 	OnAttackStarted.Broadcast(CurrentTarget);
+
+	UE_LOG(LogTemp, Log, TEXT("%s started attack animation on %s"),
+		*GetOwner()->GetName(),
+		*CurrentTarget->GetName());
+}
+
+void UCombatComponent::ApplyMeleeDamage()
+{
+	if (!CurrentTarget || !StatComponent)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("%s: ApplyMeleeDamage called but no valid target"), *GetOwner()->GetName());
+		return;
+	}
+
+	// Check if target is still in range
+	if (!IsInAttackRange(CurrentTarget))
+	{
+		UE_LOG(LogTemp, Warning, TEXT("%s: Target %s out of range, damage not applied"),
+			*GetOwner()->GetName(), *CurrentTarget->GetName());
+		return;
+	}
 
 	// Get attack damage from stat component
 	float AttackDamage = StatComponent->GetCurrentAttackDamage();
@@ -141,15 +171,37 @@ void UCombatComponent::PerformAttack()
 	if (TargetStatComponent)
 	{
 		TargetStatComponent->TakeDamage(AttackDamage, GetOwner());
+
+		// Broadcast attack hit event (for effects/sounds)
+		OnAttackHit.Broadcast(CurrentTarget);
+
+		UE_LOG(LogTemp, Log, TEXT("%s dealt %.1f damage to %s"),
+			*GetOwner()->GetName(),
+			AttackDamage,
+			*CurrentTarget->GetName());
 	}
+}
 
-	// Broadcast attack hit event (for effects/sounds)
-	OnAttackHit.Broadcast(CurrentTarget);
+void UCombatComponent::CancelAttackMontage()
+{
+	AActor* Owner = GetOwner();
+	if (!Owner)
+		return;
 
-	UE_LOG(LogTemp, Log, TEXT("%s attacked %s for %.1f damage"),
-		*GetOwner()->GetName(),
-		*CurrentTarget->GetName(),
-		AttackDamage);
+	// Get the character's mesh and anim instance
+	if (ACharacter* Character = Cast<ACharacter>(Owner))
+	{
+		USkeletalMeshComponent* Mesh = Character->GetMesh();
+		if (Mesh)
+		{
+			UAnimInstance* AnimInstance = Mesh->GetAnimInstance();
+			if (AnimInstance && AnimInstance->IsAnyMontagePlaying())
+			{
+				AnimInstance->Montage_Stop(0.2f);
+				UE_LOG(LogTemp, Log, TEXT("%s: Attack montage cancelled"), *Owner->GetName());
+			}
+		}
+	}
 }
 
 void UCombatComponent::UpdateAttackCooldown()

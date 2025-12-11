@@ -69,5 +69,6 @@ public:
 	void ApplyStats(UCharacter_Data* CharacterData);
 
 protected:
+	UFUNCTION()
 	void Attack(AActor* Target);
 };

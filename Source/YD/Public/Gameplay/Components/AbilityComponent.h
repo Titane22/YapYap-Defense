@@ -64,6 +64,19 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Abilities")
 	void ExecuteAbility(EAbilitySlot Slot, const FAbilityTargetData& TargetData);
 
+	/** Spawn projectile from AnimNotify (for ranged abilities) */
+	UFUNCTION(BlueprintCallable, Category = "Abilities")
+	void SpawnProjectileFromNotify(const FVector& SpawnLocation, const FRotator& SpawnRotation);
+
+	/** Get currently casting ability */
+	UFUNCTION(BlueprintPure, Category = "Abilities")
+	UAbility* GetCurrentCastingAbility() const { return CurrentCastingAbility; }
+
+protected:
+	/** Currently casting ability (set during Execute, used by AnimNotify) */
+	UPROPERTY()
+	UAbility* CurrentCastingAbility;
+
 public:
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
 };

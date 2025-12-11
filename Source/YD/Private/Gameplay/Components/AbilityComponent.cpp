@@ -107,6 +107,27 @@ void UAbilityComponent::ExecuteAbility(EAbilitySlot Slot, const FAbilityTargetDa
 		return;
 	}
 
+	// Set current casting ability for AnimNotify to use
+	CurrentCastingAbility = Ability;
+
 	Ability->Execute(TargetData);
+
+	// Note: CurrentCastingAbility will be cleared after ability finishes
+	// For now, it stays set until next ability is cast
+}
+
+void UAbilityComponent::SpawnProjectileFromNotify(const FVector& SpawnLocation, const FRotator& SpawnRotation)
+{
+	if (!CurrentCastingAbility)
+	{
+		UE_LOG(LogTemp, Error, TEXT("SpawnProjectileFromNotify: No CurrentCastingAbility set!"));
+		return;
+	}
+
+	// Delegate to the ability to spawn its projectile
+	CurrentCastingAbility->SpawnProjectile(SpawnLocation, SpawnRotation);
+
+	UE_LOG(LogTemp, Log, TEXT("SpawnProjectileFromNotify called for ability: %s"),
+		*CurrentCastingAbility->AbilityData->AbilityName.ToString());
 }
 

@@ -49,6 +49,14 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Combat")
 	void Attack(AActor* Target);
 
+	/** Apply melee damage to current target (called from AnimNotify) */
+	UFUNCTION(BlueprintCallable, Category = "Combat")
+	void ApplyMeleeDamage();
+
+	/** Cancel current attack montage (e.g., when target goes out of range) */
+	UFUNCTION(BlueprintCallable, Category = "Combat")
+	void CancelAttackMontage();
+
 	/** Events for animation/effects */
 	UPROPERTY(BlueprintAssignable, Category = "Combat")
 	FOnAttackStarted OnAttackStarted;

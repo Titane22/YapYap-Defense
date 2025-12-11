@@ -82,8 +82,12 @@ public:
 	void LevelUp();
 
 	UFUNCTION(BlueprintCallable, Category = "Ability")
-	void CancelCast();	
-	
+	void CancelCast();
+
+	/** Spawn projectile at specified location (called from AnimNotify) */
+	UFUNCTION(BlueprintCallable, Category = "Ability")
+	void SpawnProjectile(const FVector& SpawnLocation, const FRotator& SpawnRotation);
+
 	// ============ Queries(외부에서 조회) ============
 	bool CanCast() const;
 	bool IsOnCooldown() const { return RemainingCooldown > 0.0f && CurrentCharges == 0; }
